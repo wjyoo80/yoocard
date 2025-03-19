@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Yoo's Word Quiz</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        input, button { font-size: 18px; margin: 10px; }
+        #question { font-size: 24px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>The Yoo's Word Quiz</h1>
+    <input type="file" id="fileInput" accept=".xlsx">
+    <br>
+    <button onclick="startQuiz('ko')">한</button>
+    <button onclick="startQuiz('en')">영</button>
+    <br>
+    <div id="question"></div>
+    <input type="text" id="answerInput" placeholder="Answer">
+    <!-- <button onclick="checkAnswer()">제출</button> -->
+    <script>
+        let wordPool = [];  // full word pool from excel
+        let quizPool = [];  // pool for quiz loop
+        let currentQuestion = null;
+        let currentMode = 'ko'; // quiz mode ('ko': korean, 'en': english)
+
+        function resetData() {
+            wordPool = [];
+            quizPool = [];
+            currentQuestion = null;
+            document.getElementById('question').innerText = "";
+        }
+
+        // reset data when loading page
+        window.onload = resetData;
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            resetData();  // reset data when uploading a new file
+            let file = event.target.files[0];
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, { type: 'array' });
+                let sheet = workbook.Sheets[workbook.SheetNames[0]];
+                let rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // load data and store to wordPool
+                wordPool = [];
+                for (let i = 1; i < rows.length; i++) {
+                    let row = rows[i];
+                    if (row[0] && row[1]) wordPool.push({ en: row[0], ko: row[1] }); // A-B column
+                    if (row[2] && row[3]) wordPool.push({ en: row[2], ko: row[3] }); // C-D column
+                }
+
+                alert("단어가 업로드되었습니다!");
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function startQuiz(mode) {
+            if (wordPool.length === 0) {
+                alert("엑셀 파일을 먼저 업로드해주세요!");
+                return;
+            }
+            currentMode = mode;
+            quizPool = [...wordPool]; // copy wordPool to quizPool
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (quizPool.length === 0) {
+                document.getElementById('question').innerText = "오늘도 해냈구나나";
+                return;
+            }
+            let randomIndex = Math.floor(Math.random() * quizPool.length);
+            currentQuestion = quizPool[randomIndex];
+
+            document.getElementById('question').innerText = 
+                currentMode === 'ko' ? currentQuestion.ko : currentQuestion.en;
+            document.getElementById('answerInput').value = "";
+        }
+
+        function checkAnswer() {
+            let answer = document.getElementById('answerInput').value.trim();
+            if (!currentQuestion) return;
+
+            let correctAnswer = currentMode === 'ko' ? currentQuestion.en : currentQuestion.ko;
+            if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
+                alert("Good!");
+                quizPool = quizPool.filter(q => q !== currentQuestion); // remove from the quiz pool
+            } else {
+                alert(`에헤이! 정답: ${correctAnswer}`);
+            }
+            nextQuestion();
+        }
+
+        // submit answer by enter key
+        document.getElementById('answerInput').addEventListener('keypress', function(event) {
+            if (event.key === "Enter") {
+                checkAnswer();
+            }
+        });
+    </script>
+</body>
+</html>
