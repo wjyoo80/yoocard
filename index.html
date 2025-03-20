@@ -9,6 +9,58 @@
         body { font-family: Arial, sans-serif; text-align: center; }
         input, button { font-size: 18px; margin: 10px; }
         #question { font-size: 24px; margin-top: 20px; }
+        .group-cards { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            justify-content: center; 
+            margin: 20px auto; 
+            max-width: 800px;
+        }
+        .group-card {
+            background-color: #f0f0f0;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            min-width: 100px;
+            text-align: center;
+        }
+        .group-card:hover { background-color: #e0e0e0; }
+        #tableContainer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+        #groupTable {
+            border-collapse: collapse;
+            margin: 10px auto;
+        }
+        #groupTable th, #groupTable td {
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            text-align: left;
+        }
+        #groupTable th { 
+            background-color: #4CAF50; 
+            color: white; 
+            text-align: center;
+        }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .close-btn:hover { color: red; }
     </style>
 </head>
 <body>
@@ -20,25 +72,44 @@
     <br>
     <div id="question"></div>
     <input type="text" id="answerInput" placeholder="Answer">
-    <!-- <button onclick="checkAnswer()">제출</button> -->
+
+    <!-- Group Card -->
+    <div id="groupCards" class="group-cards"></div>
+
+    <!-- word table popup -->
+    <div id="tableContainer">
+        <span class="close-btn" onclick="document.getElementById('tableContainer').style.display='none'">×</span>
+        <table id="groupTable">
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>English</th>
+                    <th>Korean</th>
+                </tr>
+            </thead>
+            <tbody id="groupTableBody"></tbody>
+        </table>
+    </div>
+
     <script>
-        let wordPool = [];  // full word pool from excel
-        let quizPool = [];  // pool for quiz loop
+        let wordPool = [];
+        let quizPool = [];
         let currentQuestion = null;
-        let currentMode = 'ko'; // quiz mode ('ko': korean, 'en': english)
+        let currentMode = 'ko';
 
         function resetData() {
             wordPool = [];
             quizPool = [];
             currentQuestion = null;
             document.getElementById('question').innerText = "";
+            document.getElementById('groupCards').innerHTML = "";
+            document.getElementById('tableContainer').style.display = 'none';
         }
 
-        // reset data when loading page
         window.onload = resetData;
 
         document.getElementById('fileInput').addEventListener('change', function(event) {
-            resetData();  // reset data when uploading a new file
+            resetData();
             let file = event.target.files[0];
             let reader = new FileReader();
             reader.onload = function(e) {
@@ -47,18 +118,55 @@
                 let sheet = workbook.Sheets[workbook.SheetNames[0]];
                 let rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                // load data and store to wordPool
                 wordPool = [];
                 for (let i = 1; i < rows.length; i++) {
                     let row = rows[i];
-                    if (row[0] && row[1]) wordPool.push({ en: row[0], ko: row[1] }); // A-B column
-                    if (row[2] && row[3]) wordPool.push({ en: row[2], ko: row[3] }); // C-D column
+                    if (row[0] && row[1]) wordPool.push({ en: row[0], ko: row[1] });
+                    if (row[2] && row[3]) wordPool.push({ en: row[2], ko: row[3] });
                 }
 
+                createGroupCards(chunkArray(wordPool, 10));
                 alert("단어가 업로드되었습니다!");
             };
             reader.readAsArrayBuffer(file);
         });
+
+        function chunkArray(arr, size) {
+            const chunks = [];
+            for (let i = 0; i < arr.length; i += size) {
+                chunks.push(arr.slice(i, i + size));
+            }
+            return chunks;
+        }
+
+        function createGroupCards(groups) {
+            const container = document.getElementById('groupCards');
+            container.innerHTML = '';
+            groups.forEach((group, index) => {
+                const card = document.createElement('div');
+                card.className = 'group-card';
+                card.textContent = `Group ${index + 1}`;
+                card.onclick = ((g, num) => () => showGroupTable(g, num))(group, index + 1);
+                container.appendChild(card);
+            });
+        }
+
+        function showGroupTable(group, groupNumber) {
+            const tableBody = document.getElementById('groupTableBody');
+            tableBody.innerHTML = '';
+            
+            group.forEach((word, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td>${word.en}</td>
+                    <td>${word.ko}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            document.getElementById('tableContainer').style.display = 'block';
+        }
 
         function startQuiz(mode) {
             if (wordPool.length === 0) {
@@ -66,7 +174,7 @@
                 return;
             }
             currentMode = mode;
-            quizPool = [...wordPool]; // copy wordPool to quizPool
+            quizPool = [...wordPool];
             nextQuestion();
         }
 
@@ -77,7 +185,6 @@
             }
             let randomIndex = Math.floor(Math.random() * quizPool.length);
             currentQuestion = quizPool[randomIndex];
-
             document.getElementById('question').innerText = 
                 currentMode === 'ko' ? currentQuestion.ko : currentQuestion.en;
             document.getElementById('answerInput').value = "";
@@ -90,18 +197,15 @@
             let correctAnswer = currentMode === 'ko' ? currentQuestion.en : currentQuestion.ko;
             if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
                 alert("Good!");
-                quizPool = quizPool.filter(q => q !== currentQuestion); // remove from the quiz pool
+                quizPool = quizPool.filter(q => q !== currentQuestion);
             } else {
                 alert(`에헤이! 정답: ${correctAnswer}`);
             }
             nextQuestion();
         }
 
-        // submit answer by enter key
         document.getElementById('answerInput').addEventListener('keypress', function(event) {
-            if (event.key === "Enter") {
-                checkAnswer();
-            }
+            if (event.key === "Enter") checkAnswer();
         });
     </script>
 </body>
