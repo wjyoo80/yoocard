@@ -86,9 +86,9 @@
         <table id="groupTable">
             <thead>
                 <tr>
-                    <th>No.</th>
-                    <th>English</th>
-                    <th>Korean</th>
+                    <th nowrap>No.</th>
+                    <th nowrap>English</th>
+                    <th nowrap>Korean</th>
                 </tr>
             </thead>
             <tbody id="groupTableBody"></tbody>
@@ -162,7 +162,7 @@
             group.forEach((word, index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td style="text-align: center;">${index + 1}</td>
+                    <td nowrap style="text-align: center;">${index + 1}</td>
                     <td nowrap>${word.en}</td>
                     <td nowrap>${word.ko}</td>
                 `;
