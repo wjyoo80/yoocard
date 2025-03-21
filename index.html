@@ -278,10 +278,12 @@
         }
 
         document.getElementById('answerInput').addEventListener('keypress', function(event) {
-            if (document.getElementById("customAlert").style.display === "block") {
-                closeAlert();
-            } else {
-                checkAnswer();
+            if (event.key === "Enter") {
+                if (document.getElementById("customAlert").style.display === "block") {
+                    closeAlert();
+                } else {
+                    checkAnswer();
+                }
             }
         });
 
