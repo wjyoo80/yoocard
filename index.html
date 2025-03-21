@@ -128,6 +128,7 @@
         let currentMode = 'ko';
         let currentDay = null;
         let incorrectCounts = new Map();
+        let incorrectPools = { day1: new Set(), day2: new Set() };
 
         function showAlert(message, imgSrc, correctAnswer = "") {
             let fullMessage = message;
@@ -151,6 +152,8 @@
             currentQuizPool = [];
             currentQuestion = null;
             currentDay = null;
+            incorrectPools.day1.clear();
+            incorrectPools.day2.clear();
             incorrectCounts.clear();
             document.getElementById('question').innerText = "";
             document.getElementById('groupCards').innerHTML = "";
@@ -176,7 +179,7 @@
                     if (row[2] && row[3]) wordPool.day2.push({ en: row[2], ko: row[3] });
                 }
 
-                alert("단어가 업로드되었습니다!");
+                // alert("단어가 업로드되었습니다!");
                 updateRemainingCounts();
             };
             reader.readAsArrayBuffer(file);
@@ -209,7 +212,7 @@
                 const card = document.createElement('div');
                 card.className = 'group-card';
                 card.textContent = `${day === 'day1' ? 'Day 1' : 'Day 2'} Group ${index + 1}`;
-                card.onclick = ((g, num) => () => showGroupTable(g, num, day))(group, index + 1);
+                card.onclick = ((g, num, d) => () => showGroupTable(g, num, d))(group, index + 1, day);
                 container.appendChild(card);
             });
         }
@@ -220,6 +223,9 @@
 
             group.forEach((word, index) => {
                 const row = document.createElement('tr');
+                if (incorrectPools[day].has(word)) {
+                    row.classList.add("incorrect");
+                }
                 row.innerHTML = `
                     <td nowrap style="text-align: center;">${index + 1}</td>
                     <td nowrap>${word.en}</td>
@@ -271,6 +277,7 @@
                 }
             } else {
                 showAlert("에헤이! 잘 좀 하자!", "oops.png", correctAnswer);
+                incorrectPools[currentDay].add(currentQuestion);
                 highlightIncorrect(currentQuestion);
                 highlightIncorrectInTable(currentQuestion);
             }
