@@ -6,6 +6,7 @@
     <title>The Yoo's Word Quiz</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* 기존 스타일 유지 */
         body { font-family: Arial, sans-serif; text-align: center; }
         input, button { font-size: 18px; margin: 10px; }
         #question { font-size: 24px; margin-top: 20px; }
@@ -69,12 +70,30 @@
             font-weight: bold;
         }
         .close-btn:hover { color: red; }
+        /* 추가된 스타일 */
+        .day-buttons { margin: 10px; }
+        #remainingCounts { 
+            font-size: 18px; 
+            margin: 20px; 
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <h1>The Yoo's Word Quiz</h1>
     <input type="file" id="fileInput" accept=".xlsx">
     <br>
+    <div class="day-buttons">
+        <button onclick="selectDay('day1')">Day 1</button>
+        <button onclick="selectDay('day2')">Day 2</button>
+    </div>
+    <div id="remainingCounts">
+        Day 1 남은 단어: <span id="day1Remaining">0</span>
+        <br>
+        Day 2 남은 단어: <span id="day2Remaining">0</span>
+    </div>
     <button onclick="startQuiz('ko')">한</button>
     <button onclick="startQuiz('en')">영</button>
     <br>
@@ -94,21 +113,49 @@
             <tbody id="groupTableBody"></tbody>
         </table>
     </div>
+    <div id="customAlert" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); 
+    background:white; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:1000; text-align:center;">
+    <img id="alertImage" src="" alt="Popup Image" style="max-width:100px; display:block; margin:0 auto 10px;">
+    <p id="alertMessage"></p>
+    <button onclick="closeAlert()">확인</button>
+    </div>
     <script>
-        let wordPool = [];
-        let quizPool = [];
+        let wordPool = { day1: [], day2: [] };
+        let quizPoolDay1 = [];
+        let quizPoolDay2 = [];
+        let currentQuizPool = [];
         let currentQuestion = null;
         let currentMode = 'ko';
+        let currentDay = null;
         let incorrectCounts = new Map();
 
+        function showAlert(message, imgSrc, correctAnswer = "") {
+            let fullMessage = message;
+            if (correctAnswer) {
+                fullMessage += ` 정답: ${correctAnswer}`;
+            }
+    
+            document.getElementById("alertMessage").innerText = fullMessage;
+            document.getElementById("alertImage").src = imgSrc;
+            document.getElementById("customAlert").style.display = "block";
+        }
+
+        function closeAlert() {
+            document.getElementById("customAlert").style.display = "none";
+        }
+
         function resetData() {
-            wordPool = [];
-            quizPool = [];
+            wordPool = { day1: [], day2: [] };
+            quizPoolDay1 = [];
+            quizPoolDay2 = [];
+            currentQuizPool = [];
             currentQuestion = null;
+            currentDay = null;
             incorrectCounts.clear();
             document.getElementById('question').innerText = "";
             document.getElementById('groupCards').innerHTML = "";
             document.getElementById('tableContainer').style.display = 'none';
+            updateRemainingCounts();
         }
 
         window.onload = resetData;
@@ -123,18 +170,29 @@
                 let sheet = workbook.Sheets[workbook.SheetNames[0]];
                 let rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                wordPool = [];
                 for (let i = 1; i < rows.length; i++) {
                     let row = rows[i];
-                    if (row[0] && row[1]) wordPool.push({ en: row[0], ko: row[1] });
-                    if (row[2] && row[3]) wordPool.push({ en: row[2], ko: row[3] });
+                    if (row[0] && row[1]) wordPool.day1.push({ en: row[0], ko: row[1] });
+                    if (row[2] && row[3]) wordPool.day2.push({ en: row[2], ko: row[3] });
                 }
 
-                createGroupCards(chunkArray(wordPool, 10));
                 alert("단어가 업로드되었습니다!");
+                updateRemainingCounts();
             };
             reader.readAsArrayBuffer(file);
         });
+
+        function selectDay(day) {
+            currentDay = day;
+            if (day === 'day1') {
+                quizPoolDay1 = [...wordPool.day1];
+                createGroupCards(chunkArray(wordPool.day1, 10), 'day1');
+            } else {
+                quizPoolDay2 = [...wordPool.day2];
+                createGroupCards(chunkArray(wordPool.day2, 10), 'day2');
+            }
+            updateRemainingCounts();
+        }
 
         function chunkArray(arr, size) {
             const chunks = [];
@@ -144,19 +202,19 @@
             return chunks;
         }
 
-        function createGroupCards(groups) {
+        function createGroupCards(groups, day) {
             const container = document.getElementById('groupCards');
             container.innerHTML = '';
             groups.forEach((group, index) => {
                 const card = document.createElement('div');
                 card.className = 'group-card';
-                card.textContent = `Group ${index + 1}`;
-                card.onclick = ((g, num) => () => showGroupTable(g, num))(group, index + 1);
+                card.textContent = `${day === 'day1' ? 'Day 1' : 'Day 2'} Group ${index + 1}`;
+                card.onclick = ((g, num) => () => showGroupTable(g, num, day))(group, index + 1);
                 container.appendChild(card);
             });
         }
 
-        function showGroupTable(group, groupNumber) {
+        function showGroupTable(group, groupNumber, day) {
             const tableBody = document.getElementById('groupTableBody');
             tableBody.innerHTML = '';
 
@@ -174,22 +232,22 @@
         }
 
         function startQuiz(mode) {
-            if (wordPool.length === 0) {
-                alert("엑셀 파일을 먼저 업로드해주세요!");
+            if (!currentDay) {
+                alert("Day를 먼저 선택해주세요!");
                 return;
             }
             currentMode = mode;
-            quizPool = [...wordPool];
+            currentQuizPool = currentDay === 'day1' ? [...quizPoolDay1] : [...quizPoolDay2];
             nextQuestion();
         }
 
         function nextQuestion() {
-            if (quizPool.length === 0) {
-                document.getElementById('question').innerText = "오늘도 해냈구나";
+            if (currentQuizPool.length === 0) {
+                alert("오늘도 해냈구나");
                 return;
             }
-            let randomIndex = Math.floor(Math.random() * quizPool.length);
-            currentQuestion = quizPool[randomIndex];
+            let randomIndex = Math.floor(Math.random() * currentQuizPool.length);
+            currentQuestion = currentQuizPool[randomIndex];
             document.getElementById('question').innerText = 
                 currentMode === 'ko' ? currentQuestion.ko : currentQuestion.en;
             document.getElementById('answerInput').value = "";
@@ -201,19 +259,39 @@
             let correctAnswer = currentMode === 'ko' ? currentQuestion.en : currentQuestion.ko;
             if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
                 alert("Good!");
-                quizPool = quizPool.filter(q => q !== currentQuestion);
+                let index = currentQuizPool.indexOf(currentQuestion);
+                if (index !== -1) {
+                    currentQuizPool.splice(index, 1);
+                    if (currentDay === 'day1') {
+                        quizPoolDay1 = currentQuizPool;
+                    } else {
+                        quizPoolDay2 = currentQuizPool;
+                    }
+                    updateRemainingCounts();
+                }
             } else {
-                alert(`에헤이! 정답: ${correctAnswer}`);
+                showAlert("에헤이! 잘 좀 하자!", "oops.png", correctAnswer);
                 highlightIncorrect(currentQuestion);
                 highlightIncorrectInTable(currentQuestion);
             }
             nextQuestion();
         }
+
         document.getElementById('answerInput').addEventListener('keypress', function(event) {
-            if (event.key === "Enter") checkAnswer();
+            if (document.getElementById("customAlert").style.display === "block") {
+                closeAlert();
+            } else {
+                checkAnswer();
+            }
         });
+
+        function updateRemainingCounts() {
+            document.getElementById('day1Remaining').textContent = quizPoolDay1.length;
+            document.getElementById('day2Remaining').textContent = quizPoolDay2.length;
+        }
+
         function highlightIncorrect(word) {
-            let groupIndex = Math.floor(wordPool.indexOf(word) / 10);
+            let groupIndex = Math.floor((currentDay === 'day1' ? wordPool.day1 : wordPool.day2).indexOf(word) / 10);
             let card = document.getElementsByClassName('group-card')[groupIndex];
             incorrectCounts.set(card, (incorrectCounts.get(card) || 0) + 1);
             let redIntensity = Math.min(255, incorrectCounts.get(card) * 50);
