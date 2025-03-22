@@ -133,7 +133,7 @@
         function showAlert(message, imgSrc, correctAnswer = "") {
             let fullMessage = message;
             if (correctAnswer) {
-                fullMessage += ` 정답: ${correctAnswer}`;
+                fullMessage += `\n 정답: ${correctAnswer}`;
             }
     
             document.getElementById("alertMessage").innerText = fullMessage;
