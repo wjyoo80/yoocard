@@ -129,6 +129,7 @@
         let currentDay = null;
         let incorrectCounts = new Map();
         let incorrectPools = { day1: new Set(), day2: new Set() };
+        let dataLoaded = null;
 
         function showAlert(message, imgSrc, correctAnswer = "") {
             let fullMessage = message;
@@ -180,12 +181,17 @@
                 }
 
                 // alert("단어가 업로드되었습니다!");
+                dataLoaded = true;
                 updateRemainingCounts();
             };
             reader.readAsArrayBuffer(file);
         });
 
         function selectDay(day) {
+            if (!dataLoaded) {
+                alert("단어장 파일을 업로드 하세요");
+                return;
+            }
             currentDay = day;
             if (day === 'day1') {
                 quizPoolDay1 = [...wordPool.day1];
@@ -240,6 +246,10 @@
         }
 
         function startQuiz(mode) {
+            if (!dataLoaded) {
+                alert("단어장 파일을 업로드 하세요");
+                return;
+            }
             if (!currentDay) {
                 alert("Day를 먼저 선택해주세요!");
                 return;
