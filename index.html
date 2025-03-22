@@ -194,6 +194,7 @@
                 quizPoolDay2 = [...wordPool.day2];
                 createGroupCards(chunkArray(wordPool.day2, 10), 'day2');
             }
+            incorrectPools[day].clear();
             updateRemainingCounts();
         }
 
@@ -212,6 +213,7 @@
                 const card = document.createElement('div');
                 card.className = 'group-card';
                 card.textContent = `${day === 'day1' ? 'Day 1' : 'Day 2'} Group ${index + 1}`;
+                card.style.backgroundColor = '#f0f0f0';
                 card.onclick = ((g, num, d) => () => showGroupTable(g, num, d))(group, index + 1, day);
                 container.appendChild(card);
             });
